@@ -26,7 +26,7 @@ import java.util.UUID;
  * 역할 변경 알림 (2026-11-26):
  *   ✅ 역할 정의가 바뀌면(역할의 권한·화면) 개별 메일 대신 공지로 바꿨음 → RoleDefinitionChanged
  *   ✅ 사람 단위 변경 알림은 발송 대기 테이블로 → UserRoleChanged (본인이 만듦, 세부는 예시)
- *   ✅ 부여(GRANT)는 기존처럼 개인 메일, 회수(REVOKE)는 영향 범위 표시 + 50명 이상 관리자 승인
+ *   ✅ 부여(GRANT)는 기존처럼 개인 메일, 회수(REVOKE)는 영향 범위 표시 + 50명 이상 상위 관리자 승인
  *   이 서비스는 저장 후 이벤트만 발행하고, 공지·발송 대기 적재는 커밋 뒤 RoleChangeNotificationListener가 한다.
  *   여러 사용자에게 한 역할을 한꺼번에 주거나 빼는 변경은 RoleChangeRequestService (✅ 미리보기·승인)
  *   ✅ 장애 당시 대응: 역할 수정 버튼을 막고, 현업·개발자에게 수동 실행 금지를 안내함
