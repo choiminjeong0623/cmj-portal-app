@@ -40,6 +40,24 @@ public class LabelService {
      * ⚠️ 바꾼 값이 Redis에 바로 들어갔는지, cmj-redis 재기동 후에 반영됐는지는 미확인.
      *    예시에서는 DB 저장과 함께 그 키 하나만 Redis에 바로 넣음 (재기동 없이 반영되는 쪽)
      */
+    /**
+     * 정책 값 읽기: Redis(label:POLICY) → 없으면 DB(TB_LABEL) → 그래도 없으면 기본값
+     * (시큐리티 서버 PolicyLabelService와 같은 순서)
+     */
+    public String policy(String key, String defaultValue) {
+        Object cached = redis.opsForHash().get("label:POLICY", key);
+        if (cached != null) return cached.toString();
+        return jdbc.queryForList("""
+            SELECT LABEL_TEXT FROM TB_LABEL
+             WHERE LABEL_GRP = 'POLICY' AND LANG_CD = 'SYS' AND LABEL_KEY = :k AND USE_YN = 'Y'""",
+            Map.of("k", key), String.class).stream().findFirst().orElse(defaultValue);
+    }
+
+    public int policyInt(String key, int defaultValue) {
+        try { return Integer.parseInt(policy(key, String.valueOf(defaultValue)).trim()); }
+        catch (NumberFormatException e) { return defaultValue; }
+    }
+
     public void updatePolicy(String key, String value) {
         jdbc.update("""
             UPDATE TB_LABEL SET LABEL_TEXT = :v, UPD_ID = :admin, UPD_DT = SYSTIMESTAMP

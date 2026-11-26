@@ -21,5 +21,6 @@ cmj:
     authenticated-only-paths:           # 로그인만 되어 있으면 되는 것: 내 메뉴, 마이페이지
       - /api/portal/menus
       - /api/portal/session/refresh
+      - /api/portal/session/extend      # 만료 안내 팝업의 [연장] 버튼
       - /api/portal/screens/*/auth
       - /api/portal/mypage/**
