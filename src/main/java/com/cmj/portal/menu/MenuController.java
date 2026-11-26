@@ -47,4 +47,15 @@ public class MenuController {
         refresh.refreshUser(userId);
         return permissions.findScreens(userId, SecurityUtil.getPortalCd());
     }
+
+    /**
+     * ✅ 만료 안내 팝업의 [연장] 버튼이 부르는 API — 누르면 세션 시간이 다시 늘어남 (Q16 후속, 2026-11-26 확인)
+     * 하는 일이 거의 없는 이유: 이 요청도 SessionAuthFilter를 지나면서 이미 Redis TTL이 연장(touch)되고
+     * 새 만료 시각이 X-Session-Expires-At 헤더로 나간다. 여기서는 그 결과만 본문으로 한 번 더 알려 줌.
+     * ⚠️ 실제 API 주소·이름은 미확인 (예시)
+     */
+    @PostMapping("/session/extend")
+    public Map<String, Object> extendMySession(jakarta.servlet.http.HttpServletResponse res) {
+        return Map.of("extended", true, "expiresAt", res.getHeader("X-Session-Expires-At"));
+    }
 }
