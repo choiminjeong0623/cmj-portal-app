@@ -48,8 +48,9 @@ public class RoleChangeNotificationListener {
     }
 
     /**
-     * 사람 단위 변경 → 발송 대기 테이블에 대상자별로 한 줄씩 (🟩 발송 대기 테이블 쪽 로직 — 세부 구조는 예시)
-     * 대량 변경(BULK_NOTIFY_LIMIT 초과)은 여기까지 오지 않는다: RoleChangeRequestService가 저장 전에 승인 대기로 돌림 (📘)
+     * 사람 단위 변경 → 발송 대기 테이블에 대상자별로 한 줄씩 (✅ 커밋된 메일을 바로 보내지 않고 대기 테이블에 넣음 — 세부 구조는 예시)
+     *  - GRANT: ✅ 부여는 기존처럼 개인 메일 (예시에서는 같은 대기 테이블을 거침 — 실제 발송 경로는 미확인)
+     *  - REVOKE: ✅ 회수 50명 이상은 승인 전까지 여기로 오지 않음 (RoleChangeRequestService가 저장 전에 승인 대기로 돌림)
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional(propagation = Propagation.REQUIRES_NEW)

@@ -18,16 +18,18 @@ import java.util.UUID;
 /**
  * 여러 사용자에게 한 역할을 한꺼번에 주거나 빼는 변경 (사람 단위 대량 변경).
  *
- * 🟩 관리자 화면 쪽은 본인이 수정에 참여해 맡았다고 기억함 — 본인 역할 범위는 기억 정리 중, 세부는 예시
- * 📘 개선안 (실제로 한 일인지 미확인):
- *   - 미리보기: 저장 전에 실제로 영향받는 인원을 세어 "N명이 영향받습니다" 확인창
- *   - 기준(정책 라벨 BULK_NOTIFY_LIMIT)을 넘으면 바로 반영하지 않고 TB_ROLE_CHANGE_REQ 에 PENDING
- *   - 요청자와 다른 관리자가 승인해야 반영 + 알림
+ * ✅ 본인이 만든 수정 (2026-11-26 확인) — 계기: 역할 회수 후 그 역할을 가졌던 사용자 전원에게 메일이 한꺼번에 나간 장애
+ *   - 분기: 역할 "부여"(GRANT)는 기존처럼 개인 메일 / 역할에서 사용자를 "빼는"(REVOKE) 경우만 새 경로
+ *   - 회수는 수정 전에 영향 범위를 화면에 띄움 (미리보기)
+ *   - 영향이 50명 이상이면 관리자 승인 단계를 거침 → TB_ROLE_CHANGE_REQ 에 PENDING
+ *   - 메일은 커밋 후 바로 보내지 않고 발송 대기 테이블에 넣어 배치가 정해진 수만큼 보냄 (NotificationOutbox)
+ * ⚠️ 테이블 이름·컬럼·API 주소는 예시
  */
 @Service
 public class RoleChangeRequestService {
 
-    private static final int DEFAULT_LIMIT = 50; // ⚠️ 예시 값 — 정책 라벨이 없을 때만
+    /** 정책 라벨 BULK_NOTIFY_LIMIT 기본값. ⚠️ 50은 본인 기억 — 실제 값인지 재확인 중 */
+    private static final int DEFAULT_LIMIT = 50;
 
     private final NamedParameterJdbcTemplate jdbc;
     private final LabelService labels;
@@ -46,14 +48,26 @@ public class RoleChangeRequestService {
 
     public record Result(String changeId, String status /* APPLIED / PENDING */, int affectedCount) {}
 
-    /** 📘 미리보기: 실제로 바뀌는 사람만 센다 (GRANT는 아직 없는 사람, REVOKE는 지금 가진 사람) */
+    /**
+     * ✅ 미리보기: 회수 전에 영향 범위를 화면에 띄움. 실제로 바뀌는 사람만 센다
+     * (GRANT는 아직 없는 사람, REVOKE는 지금 가진 사람)
+     */
     public Preview preview(String roleId, String action, List<String> userIds) {
         int affected = affectedUsers(roleId, action, userIds).size();
         int limit = labels.policyInt("BULK_NOTIFY_LIMIT", DEFAULT_LIMIT);
-        return new Preview(affected, limit, affected > limit);
+        return new Preview(affected, limit, needsApproval(action, affected, limit));
     }
 
-    /** 저장: 기준 이하면 바로 반영, 넘으면 승인 대기 */
+    /** ✅ 승인이 필요한 경우: 회수(REVOKE)이면서 영향이 50명(기준) "이상" */
+    private static boolean needsApproval(String action, int affected, int limit) {
+        return "REVOKE".equals(action) && affected >= limit;
+    }
+
+    /**
+     * 저장 (✅ 분기 로직)
+     *  - GRANT: 기준과 상관없이 바로 반영 — 부여는 기존처럼 개인 메일
+     *  - REVOKE: 영향이 기준 미만이면 바로 반영, 기준 이상이면 승인 대기
+     */
     @Transactional
     public Result request(String roleId, String action, List<String> userIds) {
         validateAction(action);
@@ -62,7 +76,7 @@ public class RoleChangeRequestService {
         String adminId = SecurityUtil.getUserId();
         int limit = labels.policyInt("BULK_NOTIFY_LIMIT", DEFAULT_LIMIT);
 
-        if (targets.size() > limit) {
+        if (needsApproval(action, targets.size(), limit)) {
             jdbc.update("""
                 INSERT INTO TB_ROLE_CHANGE_REQ (CHANGE_ID, ROLE_ID, ACTION, TARGET_CNT, STATUS, REQ_ID, REQ_DT)
                 VALUES (:c, :r, :a, :n, 'PENDING', :admin, SYSTIMESTAMP)""",
@@ -74,7 +88,10 @@ public class RoleChangeRequestService {
         return new Result(changeId, "APPLIED", targets.size());
     }
 
-    /** 📘 승인: 요청자와 다른 관리자만. 승인 시점에 실제 반영 + 알림 */
+    /**
+     * ✅ 관리자 승인: 승인 시점에 실제 반영 + 알림(발송 대기 테이블)
+     * ⚠️ 승인자가 요청자와 달라야 했는지는 미확인 — 아래 검사는 예시
+     */
     @Transactional
     public Result approve(String changeId) {
         String approver = SecurityUtil.getUserId();
@@ -98,7 +115,7 @@ public class RoleChangeRequestService {
         return new Result(changeId, "APPLIED", targets.size());
     }
 
-    /** 실제 반영 → 커밋 뒤 이벤트로 알림(발송 대기 테이블) + 대상 사용자 세션 갱신 */
+    /** 실제 반영 → 커밋 뒤 이벤트로 알림 + 대상 사용자 세션 갱신 (메일은 바로 보내지 않음 ✅) */
     private void apply(String changeId, String roleId, String action, List<String> targets, String adminId) {
         for (String userId : targets) {
             if ("GRANT".equals(action)) {
@@ -111,7 +128,7 @@ public class RoleChangeRequestService {
             }
         }
         events.publishEvent(new RoleChangeEvents.UserRoleChanged(changeId, roleId, targets, action, adminId));
-        // 사람 단위 변경은 대상자 수가 기준 이하일 때만 바로 오므로, 대상자 세션을 커밋 뒤 갱신 (✅ Q7 기존 방식)
+        // 대상자 세션을 커밋 뒤 갱신 (✅ Q7 기존 방식). 회수 50명 이상은 승인 후에만 여기로 옴
         org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
             new org.springframework.transaction.support.TransactionSynchronization() {
                 @Override public void afterCommit() { targets.forEach(refresh::refreshUser); }
