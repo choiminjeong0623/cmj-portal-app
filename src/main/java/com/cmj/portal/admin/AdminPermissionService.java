@@ -69,7 +69,7 @@ public class AdminPermissionService {
     /**
      * 역할에 권한 묶기 = 역할 정의 변경
      * ✅ 개별 메일 대신 공지 (RoleDefinitionChanged)
-     * 📘 개선안: 그 역할을 가진 사용자 전체 세션을 한꺼번에 다시 만들지 않고, 권한 버전만 올림 (리스너가 bump)
+     * 🟩 본인 기억(납세자 쪽 Redis 부하 대응, 키 구조는 예시): 그 역할을 가진 사용자 전체 세션을 한꺼번에 다시 만들지 않고, 권한 버전만 올림 (리스너가 bump)
      */
     @Transactional
     public void saveRolePermissions(String roleId, List<String> permIds) {
@@ -87,7 +87,7 @@ public class AdminPermissionService {
 
     /**
      * 권한에 화면 묶기 = 이 권한을 쓰는 역할들의 정의 변경
-     * ✅ 개별 메일 대신 공지 / 📘 개선안: 관련 역할들의 권한 버전만 올림
+     * ✅ 개별 메일 대신 공지 / 🟩 관련 역할들의 권한 버전만 올림
      */
     @Transactional
     public void savePermissionScreens(String permId, List<String> screenIds) {

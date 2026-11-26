@@ -29,7 +29,7 @@ public class RoleChangeNotificationListener {
 
     /**
      * ✅ 역할 정의가 바뀌면 개별 메일 대신 공지로 바꿨음 (2026-11-26)
-     * 📘 개선안 (실제로 한 일인지 미확인): 그 역할들의 권한 버전만 올림 → 사용자 세션은 각자 다음 요청 때 다시 만들어짐
+     * 🟩 본인 기억: 그 역할들의 권한 버전만 올림 → 사용자 세션은 각자 다음 요청 때 다시 만들어짐
      *    (예전 방식: 그 역할을 가진 사용자 전체의 세션을 한꺼번에 다시 만듦 — 수백 명이면 부담)
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
