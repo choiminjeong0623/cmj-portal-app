@@ -5,16 +5,17 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import com.cmj.common.security.SecurityUtil;
 
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
  * 다국어 공통 라벨·정책 라벨·포털 테마.
  *
  * ✅ 공통 코드·다국어(영어·스와힐리어·불어·한국어) 라벨을 Redis에 둘지 본인이 판단해 코드 추가 — 이유: 화면마다 DB 조회를 줄이려고
- * ✅ 라벨을 고치면 Redis 값은 수동 갱신이었음 → reloadAll()을 관리자가 눌러 반영 (개선한다면 저장 시 자동 반영)
  * ✅ 다국어는 화면 + 백엔드 모두 본인 개발 (Q20)
+ *
+ * ✅ Redis에 저장할 값(라벨·공통 코드 등)은 별도 스프링 서버 cmj-redis 에 정의되어 있었고,
+ *    그 서버가 기동할 때 DB에서 읽어 Redis에 올렸음. 라벨을 고치면 cmj-redis 를 재기동해서 반영 (2026-11-26 확인)
+ *    → 이 서비스는 Redis에서 "읽기"만 함. 키 이름은 cmj-redis 의 RedisKeys 와 같아야 함
  *
  * Redis 키(⚠️ 예시): label:{LANG_CD} (해시: 라벨키 → 문구), label:POLICY (정책 값), theme:{PORTAL_CD}
  */
@@ -34,24 +35,11 @@ public class LabelService {
         return redis.opsForHash().entries("label:" + langCd);
     }
 
-    /** DB(TB_LABEL) → Redis 다시 적재. 언어별 해시 + 정책 해시 */
-    public int reloadAll() {
-        List<Map<String, Object>> rows = jdbc.queryForList(
-            "SELECT LABEL_GRP, LANG_CD, LABEL_KEY, LABEL_TEXT FROM TB_LABEL WHERE USE_YN = 'Y'", Map.of());
-        Map<String, Map<String, String>> byKey = new HashMap<>();
-        for (Map<String, Object> r : rows) {
-            String redisKey = "POLICY".equals(r.get("LABEL_GRP")) ? "label:POLICY" : "label:" + r.get("LANG_CD");
-            byKey.computeIfAbsent(redisKey, k -> new HashMap<>())
-                .put((String) r.get("LABEL_KEY"), (String) r.get("LABEL_TEXT"));
-        }
-        byKey.forEach((redisKey, entries) -> {
-            redis.delete(redisKey);
-            redis.opsForHash().putAll(redisKey, entries);
-        });
-        return rows.size();
-    }
-
-    /** 정책 값 변경: DB 저장 + Redis 반영 → 다음 로그인부터 시큐리티 서버가 새 값 사용 (✅ Q19) */
+    /**
+     * 정책 값 변경 (✅ 관리자 화면에서 바꿀 수 있었음, Q19)
+     * ⚠️ 바꾼 값이 Redis에 바로 들어갔는지, cmj-redis 재기동 후에 반영됐는지는 미확인.
+     *    예시에서는 DB 저장과 함께 그 키 하나만 Redis에 바로 넣음 (재기동 없이 반영되는 쪽)
+     */
     public void updatePolicy(String key, String value) {
         jdbc.update("""
             UPDATE TB_LABEL SET LABEL_TEXT = :v, UPD_ID = :admin, UPD_DT = SYSTIMESTAMP

@@ -53,11 +53,7 @@ public class AdminController {
         labels.updatePolicy(key, body.get("value"));
     }
 
-    /** ✅ 다국어 라벨을 DB에서 다시 읽어 Redis에 반영 (라벨 수정 후 수동 갱신) */
-    @PostMapping("/labels/reload")
-    public Map<String, Integer> reloadLabels() {
-        return Map.of("reloaded", labels.reloadAll());
-    }
+    // ✅ 라벨 전체를 Redis에 다시 올리는 일은 포털이 하지 않음 → 별도 서버 cmj-redis 를 재기동해서 반영 (2026-11-26 확인)
 
     /** ✅ 포털별 테마(CSS 변수 묶음)를 관리자가 선택 — 기관 포털 국기색 사용 불가 요청 대응 사례 */
     @PutMapping("/portals/{portalCd}/theme")
