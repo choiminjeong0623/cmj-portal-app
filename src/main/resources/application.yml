@@ -1,0 +1,25 @@
+server:
+  port: 8082
+
+spring:
+  datasource:
+    url: jdbc:oracle:thin:@//oracle:1521/CMJ
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  data:
+    redis:
+      host: redis
+      port: 6379
+
+cmj:
+  common-security:
+    web-filter: true
+    jwk-set-uri: http://auth-server:9000/oauth2/jwks
+    session-idle-timeout: 30m          # ⚠️ 실제 값 미확인
+    public-paths:                       # 로그인 전에도 필요한 것: 라벨(다국어), 포털 테마(CSS 변수)
+      - /api/public/**
+    authenticated-only-paths:           # 로그인만 되어 있으면 되는 것: 내 메뉴, 마이페이지
+      - /api/portal/menus
+      - /api/portal/session/refresh
+      - /api/portal/screens/*/auth
+      - /api/portal/mypage/**

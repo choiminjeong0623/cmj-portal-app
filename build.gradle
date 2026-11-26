@@ -1,0 +1,28 @@
+// cmj-portal-app — 독립 프로젝트 (✅ 실제로도 auth·common-security·security·gateway·portal·batch가 별개 프로젝트였음)
+// 참고용 예시 코드 — 실제 프로젝트 코드가 아님
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.3.5'
+    id 'io.spring.dependency-management' version '1.1.6'
+}
+
+group = 'com.cmj'
+version = '1.0.0'
+java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
+
+repositories {
+    mavenLocal()    // cmj-common-security 를 ./gradlew publishToMavenLocal 로 올려 둔 곳 (⚠️ 실제 배포 저장소는 미확인)
+    mavenCentral()
+}
+
+dependencyManagement {
+    imports { mavenBom "org.springframework.cloud:spring-cloud-dependencies:2023.0.3" }
+}
+
+dependencies {
+    implementation 'com.cmj:common-security:1.0.0'     // 공통 보안 라이브러리 (별도 저장소 cmj-common-security)
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    runtimeOnly 'com.oracle.database.jdbc:ojdbc11'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
