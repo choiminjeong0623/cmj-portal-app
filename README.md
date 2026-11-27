@@ -37,4 +37,4 @@
 | cmj-frontend-common | 공통 화면 코드 |
 | cmj-frontend-service | 업무 화면 코드 |
 
-⚠️ 공통 라이브러리의 실제 배포 방식(사내 패키지 저장소 등)은 확인되지 않아, 예시는 mavenLocal 을 씁니다.
+✅ 공통 라이브러리는 실제로 GitLab 패키지 저장소에 올려 썼음 (2026-11-27 확인). 예시는 로컬 실행용 mavenLocal.

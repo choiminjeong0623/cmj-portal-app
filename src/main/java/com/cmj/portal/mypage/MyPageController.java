@@ -13,7 +13,7 @@ import java.util.Set;
 @RequestMapping("/api/portal/mypage")
 public class MyPageController {
 
-    private static final Set<String> LANGS = Set.of("EN", "SW", "FR", "KO");
+    private static final Set<String> LANGS = Set.of("EN", "LO", "FR", "KO")  // LO = 현지어 (예시 코드);
 
     private final NamedParameterJdbcTemplate jdbc;
     private final SessionRefreshService refresh;
